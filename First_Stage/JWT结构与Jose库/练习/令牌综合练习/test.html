@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Token 刷新测试前端</title>
+</head>
+<body>
+    <h1>令牌刷新测试</h1>
+
+    <div>
+        <h3>1. 登录</h3>
+        用户名：<input type="text" id="username" value="123"><br>
+        密码：<input type="text" id="password" value="123"><br>
+        <button onclick="login()">登录</button>
+    </div>
+
+    <div>
+        <h3>2. 访问受保护接口 /message</h3>
+        <button onclick="getMessage()">调用接口</button>
+        <p id="msgResult"></p>
+    </div>
+
+    <div>
+        <h3>3. 刷新 AccessToken（过期后用这个）</h3>
+        <button onclick="refreshToken()">刷新 Token</button>
+    </div>
+
+    <div>
+        <h3>当前 Token</h3>
+        <p>Access Token：<span id="accessToken"></span></p>
+        <p>Refresh Token：<span id="refreshToken"></span></p>
+    </div>
+
+<script>
+    // 后端地址（你本地FastAPI地址）
+    const baseURL = "http://127.0.0.1:8000";
+
+    // 登录
+    async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        try {
+            const res = await fetch(`${baseURL}/login?username=${username}&password=${password}`, {
+                method: "POST"
+            });
+            const data = await res.json();
+
+            // 保存到本地
+            localStorage.setItem("access_token", data.access_token);
+            localStorage.setItem("refresh_token", data.refresh_token);
+
+            document.getElementById("accessToken").innerText = data.access_token;
+            document.getElementById("refreshToken").innerText = data.refresh_token;
+
+            alert("登录成功！");
+        } catch (e) {
+            alert("登录失败");
+        }
+    }
+
+    // 访问受保护接口 /message
+    async function getMessage() {
+        const token = localStorage.getItem("access_token");
+
+        try {
+            const res = await fetch(`${baseURL}/message`, {
+                method: "GET",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            const data = await res.json();
+            document.getElementById("msgResult").innerText = JSON.stringify(data);
+        } catch (e) {
+            document.getElementById("msgResult").innerText = "401 未登录或token过期";
+        }
+    }
+
+    // 刷新 access_token
+    async function refreshToken() {
+        const refreshToken = localStorage.getItem("refresh_token");
+
+        try {
+            const res = await fetch(`${baseURL}/refresh?refresh_token=${refreshToken}`, {
+                method: "POST"
+            });
+            const data = await res.json();
+
+            // 更新新的access_token
+            localStorage.setItem("access_token", data.access_token);
+            document.getElementById("accessToken").innerText = data.access_token;
+
+            alert("刷新成功！新access_token已生效");
+        } catch (e) {
+            alert("刷新失败，请重新登录");
+        }
+    }
+</script>
+</body>
+</html>
